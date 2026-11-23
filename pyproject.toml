@@ -1,0 +1,36 @@
+[project]
+name = "wolf-ranch-calendar"
+version = "0.1.0"
+description = "Community calendar chatbot and admin portal"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115,<1.0",
+    "asyncpg>=0.30,<1.0",
+    "httpx>=0.28,<1.0",
+    "openai>=1.68,<2.0",
+    # Supabase issues ES256 tokens when asymmetric signing keys are enabled.
+    # PyJWT only exposes EC/RSA algorithms when its crypto extra is installed.
+    "PyJWT[crypto]>=2.10,<3.0",
+    "pydantic-settings>=2.6,<3.0",
+    "pypdfium2>=4.30.0,<5.0",
+    "pillow>=10.0.0,<12.0",
+    "python-multipart>=0.0.20,<1.0",
+    "redis>=5.2,<6.0",
+    "sse-starlette>=2.2,<3.0",
+    "uvicorn[standard]>=0.34,<1.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.3,<9.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]

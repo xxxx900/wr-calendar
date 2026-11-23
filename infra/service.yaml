@@ -1,0 +1,72 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: wolf-ranch-calendar
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "3"
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      timeoutSeconds: 600
+      containerConcurrency: 20
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT_ID/calendar/calendar-api:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          env:
+            - name: LOCAL_DEVELOPMENT
+              value: "false"
+            - name: FRONTEND_ORIGIN
+              value: "http://localhost:3000"
+            - name: ADMIN_EMAILS
+              valueFrom:
+                secretKeyRef:
+                  name: ADMIN_EMAILS
+                  key: latest            
+            - name: SUPABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: SUPABASE_URL
+                  key: latest
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: OPENAI_API_KEY
+                  key: latest
+            - name: SUPABASE_SERVICE_ROLE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: SUPABASE_SERVICE_ROLE_KEY
+                  key: latest
+            - name: SUPABASE_ADMIN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: SUPABASE_ADMIN_URL
+                  key: latest
+            - name: SUPABASE_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: SUPABASE_JWT_SECRET
+                  key: latest
+            - name: SUPABASE_READONLY_URL
+              valueFrom:
+                secretKeyRef:
+                  name: SUPABASE_READONLY_URL
+                  key: latest
+            - name: UPSTASH_REDIS_REST_URL
+              valueFrom:
+                secretKeyRef:
+                  name: UPSTASH_REDIS_REST_URL
+                  key: latest
+            - name: UPSTASH_REDIS_REST_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: UPSTASH_REDIS_REST_TOKEN
+                  key: latest

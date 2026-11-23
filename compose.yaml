@@ -1,0 +1,79 @@
+name: wolf-ranch-local
+
+x-cloudrun: &cloudrun
+  platform: linux/amd64
+  deploy:
+    resources:
+      limits:
+        cpus: "1"
+        memory: 1G
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports: ["5433:5432"]
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./docker/db/000_supabase_shim.sql:/docker-entrypoint-initdb.d/000_supabase_shim.sql:ro
+      - ./supabase/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/010_001.sql:ro
+      - ./supabase/migrations/002_auth_usage_feedback.sql:/docker-entrypoint-initdb.d/020_002.sql:ro
+      - ./supabase/migrations/003_seed_admin_users.sql:/docker-entrypoint-initdb.d/030_003.sql:ro
+      - ./supabase/migrations/004_users_table_permissions.sql:/docker-entrypoint-initdb.d/040_004.sql:ro
+      - ./supabase/migrations/005_event_reviews_and_reactions.sql:/docker-entrypoint-initdb.d/050_005.sql:ro
+      - ./supabase/migrations/006_security_hardening.sql:/docker-entrypoint-initdb.d/060_006.sql:ro
+      - ./docker/db/070_readonly_login.sql:/docker-entrypoint-initdb.d/070_readonly_login.sql:ro
+      - ./docker/db/080_seed.sql:/docker-entrypoint-initdb.d/080_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+
+  redis-http:
+    image: hiett/serverless-redis-http:latest
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: local-redis-token
+      SRH_CONNECTION_STRING: redis://redis:6379
+    ports: ["8079:80"]
+    depends_on: [redis]
+
+  api:
+    <<: *cloudrun
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: [.env.docker]
+    environment:
+      PORT: "8080"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-sk-local-dummy}
+    ports: ["8000:8080"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-http:
+        condition: service_started
+
+  web:
+    <<: *cloudrun
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_APP_URL: http://localhost:3000
+        NEXT_PUBLIC_LOCAL_DEV: "true"
+        # Default keeps down/ps working without a token; local-up.ps1 sets the real one.
+        NEXT_PUBLIC_LOCAL_DEV_TOKEN: ${LOCAL_DEV_TOKEN:-unset-use-scripts-local-up}
+    environment:
+      PORT: "8080"
+      HOSTNAME: 0.0.0.0
+    ports: ["3000:8080"]
+    depends_on: [api]
+
+volumes:
+  db-data:
